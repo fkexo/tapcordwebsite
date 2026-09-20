@@ -58,6 +58,13 @@ Checklist for updates:
 
 `components/ContactSection.tsx` posts to `NEXT_PUBLIC_FORM_ENDPOINT` (e.g. a Formspree URL) when set; otherwise it opens WhatsApp with the enquiry prefilled (Onitsha number for Onitsha, Lagos number otherwise). Set the variable in Netlify site settings.
 
+## SEO
+
+- `lib/site.ts` holds the site name, description, OG image and `SITE_URL`. Set `NEXT_PUBLIC_SITE_URL` in Netlify to the production domain (no trailing slash); it drives canonical URLs, `sitemap.xml`, `robots.txt`, Open Graph URLs and JSON-LD.
+- Root layout provides `metadataBase`, a `%s | Tapcord Engineering` title template, Open Graph/Twitter tags and `LocalBusiness` JSON-LD. Each page sets its own title, description and canonical.
+- Pages that set `openGraph` must use `pageOpenGraph(path)` from `lib/site.ts`, because page-level `openGraph` replaces the layout's object.
+- The About page content lives in `components/AboutPageContent.tsx` (client component) so `app/about/page.tsx` can export metadata.
+
 ---
 
 _Last updated: 2026-09-20_

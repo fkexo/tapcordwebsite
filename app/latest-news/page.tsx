@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { pageOpenGraph } from "@/lib/site";
 
 const articles = [
   {
@@ -46,6 +48,14 @@ function formatDate(dateStr: string) {
     day: "numeric",
   });
 }
+
+export const metadata: Metadata = {
+  title: "Latest News & Insights",
+  description:
+    "Tips and insights on electrical upgrades, plumbing, smart home automation, and facility management from Tapcord Engineering.",
+  alternates: { canonical: "/latest-news" },
+  openGraph: pageOpenGraph("/latest-news"),
+};
 
 export default function LatestNewsPage() {
   return (

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { pageOpenGraph } from "@/lib/site";
 
 const steps = [
   { num: 1, title: "Initial Consultation", description: "We begin with a thorough consultation to understand your specific needs, goals, and requirements." },
@@ -42,6 +44,14 @@ const automationBenefits = [
   "Increased Property Value: Smart technology adds significant value to your property.",
   "Customized Comfort: Personalize your environment to suit your lifestyle and preferences.",
 ];
+
+export const metadata: Metadata = {
+  title: "Our Services",
+  description:
+    "Electrical installation, plumbing, facility management, and home & office automation services in Lagos and Onitsha. Request a free assessment.",
+  alternates: { canonical: "/services" },
+  openGraph: pageOpenGraph("/services"),
+};
 
 export default function ServicesPage() {
   return (
