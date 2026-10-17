@@ -1,25 +1,44 @@
-import HeroSection from "@/components/HeroSection";
-import ServicesGrid from "@/components/ServicesGrid";
-import AboutSection from "@/components/AboutSection";
-import WhyChooseUsSection from "@/components/WhyChooseUsSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
-import StatsSection from "@/components/StatsSection";
-import FAQSection from "@/components/FAQSection";
-import ContactSection from "@/components/ContactSection";
-import FeaturedWorkSection from "@/components/FeaturedWorkSection";
+import { SectionReveal } from "@/components/shared/SectionReveal";
+import { HeroSection } from "@/components/home/HeroSection";
+import { PersonaSelector } from "@/components/home/PersonaSelector";
+import { ServicesGrid } from "@/components/home/ServicesGrid";
+import { DeviceMapDemo } from "@/components/home/DeviceMapDemo";
+import { SmartStatesDemo } from "@/components/home/SmartStatesDemo";
+import { TapcordStandard } from "@/components/home/TapcordStandard";
+import { ProcessSteps } from "@/components/home/ProcessSteps";
+import { FeaturedProject } from "@/components/home/FeaturedProject";
+import { InsightsPreview } from "@/components/home/InsightsPreview";
+import { FinalCta } from "@/components/home/FinalCta";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="min-h-screen">
+    <>
       <HeroSection />
-      <ServicesGrid />
-      <FeaturedWorkSection />
-      <AboutSection />
-      <WhyChooseUsSection />
-      <TestimonialsSection />
-      <StatsSection />
-      <FAQSection />
-      <ContactSection />
-    </main>
+      <SectionReveal>
+        <PersonaSelector />
+      </SectionReveal>
+      <SectionReveal>
+        <ServicesGrid />
+      </SectionReveal>
+      <SectionReveal>
+        <DeviceMapDemo />
+      </SectionReveal>
+      <SectionReveal>
+        <SmartStatesDemo />
+      </SectionReveal>
+      <SectionReveal>
+        <TapcordStandard />
+      </SectionReveal>
+      <SectionReveal>
+        <ProcessSteps />
+      </SectionReveal>
+      <SectionReveal>
+        <FeaturedProject />
+      </SectionReveal>
+      <SectionReveal>
+        <InsightsPreview />
+      </SectionReveal>
+      <FinalCta />
+    </>
   );
 }

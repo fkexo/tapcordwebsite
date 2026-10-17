@@ -1,27 +1,17 @@
 import Link from "next/link";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Page Not Found",
-  robots: { index: false },
-};
 
 export default function NotFound() {
   return (
-    <main className="min-h-[60vh] flex items-center justify-center px-4 py-24">
-      <div className="text-center max-w-md">
-        <p className="text-[#FFB703] font-semibold mb-2">404</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">Page not found</h1>
-        <p className="text-gray-400 mb-8">
-          The page you are looking for does not exist or has moved.
-        </p>
-        <Link
-          href="/"
-          className="inline-block px-8 py-4 bg-[#FFB703] text-[#0A1128] font-bold rounded-lg hover:bg-[#F4A261] transition-colors"
-        >
-          Back to Home
-        </Link>
-      </div>
-    </main>
+    <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-4 text-center">
+      <p className="font-mono text-sm uppercase tracking-[0.2em] text-orange-ink">404</p>
+      <h1 className="mt-3 font-heading text-3xl font-bold text-navy-deep">Page not found</h1>
+      <p className="mt-3 text-navy/70">The page you&apos;re looking for doesn&apos;t exist or has moved.</p>
+      <Link
+        href="/"
+        className="mt-6 rounded-full bg-orange px-6 py-3 text-sm font-semibold text-white hover:bg-orange-deep"
+      >
+        Back to homepage
+      </Link>
+    </div>
   );
 }

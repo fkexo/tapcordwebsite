@@ -1,114 +1,88 @@
-# Tapcord Engineering Website
+# Tapcord Engineering — Website
 
-A complete marketing website for Tapcord Engineering — an MEP (Electrical, Plumbing, Facility Management) company serving Lagos and Onitsha, Nigeria.
+Next.js (App Router) + TypeScript + Tailwind CSS v4 production site for Tapcord Engineering Limited.
 
-## Tech Stack
+## Stack
 
-- **Framework**: Next.js 14+ (App Router) with TypeScript
-- **Styling**: Tailwind CSS with custom brand colors
-- **Icons**: Inline SVG icons
-- **Animations**: CSS keyframes and transitions
+- Next.js 16 (App Router), React 19, TypeScript
+- Tailwind CSS v4 (CSS-first `@theme`, no `tailwind.config.ts`)
+- Supabase (Postgres + Storage) for contact form submissions and uploaded floor plans
+- Resend for the email notification sent on each submission
+- Hosting: Vercel
 
-## Brand Colors
-
-- **Primary Background**: Dark Navy / Near-Black (`#0A1128`)
-- **Primary Text**: White / Off-white (`#F8F9FA`)
-- **Accent Color**: Gold / Warm Yellow (`#FFB703`)
-- **Secondary Accent**: Slate Gray (`#8A99B4`)
-
-## Project Structure
-
-```
-tapcordsite/
-├── app/
-│   ├── globals.css      # Global styles and Tailwind imports
-│   ├── layout.tsx       # Root layout with metadata
-│   └── page.tsx         # Main page assembling all sections
-├── components/
-│   ├── AboutSection.tsx
-│   ├── ContactSection.tsx
-│   ├── FAQSection.tsx
-│   ├── Footer.tsx
-│   ├── HeroSection.tsx
-│   ├── ServiceCard.tsx
-│   ├── ServicesGrid.tsx
-│   ├── StatCard.tsx
-│   ├── StatsSection.tsx
-│   ├── TestimonialsSection.tsx
-│   ├── WhatsAppButton.tsx
-│   ├── WhyChooseCard.tsx
-│   └── WhyChooseUsSection.tsx
-├── public/              # Static assets
-├── tailwind.config.ts   # Tailwind configuration with brand colors
-├── tsconfig.json        # TypeScript configuration
-└── package.json         # Dependencies and scripts
-```
-
-## Sections
-
-1. **Hero Section** — Headline, subheadline, CTA buttons, trust badges
-2. **Services Grid** — 4 main services (cards) + 3 premium services (row)
-3. **About / Sustainability** — Company commitment + best practices
-4. **Why Choose Us** — 4 cards highlighting key differentiators
-5. **Testimonials / Our Works** — Client quote + 3 project examples
-6. **Stats / Trust Indicators** — Experience, customers, projects
-7. **FAQ Section** — 3 common questions with answers
-8. **Contact / Final CTA** — Contact form + WhatsApp links
-9. **Footer** — Company info, quick links, contact details
-10. **WhatsApp Floating Button** — Fixed button linking to Lagos number
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-
-### Installation
+## Getting started
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the site.
+Open http://localhost:3000.
 
-### Build for Production
+## Environment variables
 
-```bash
-# Create optimized production build
-npm run build
+Copy `.env.local.example` to `.env.local` and fill in:
 
-# Start production server
-npm run start
-```
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | Production domain, no trailing slash |
+| `SUPABASE_URL` | From your Supabase project settings |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key — server-only, never exposed to the browser |
+| `SUPABASE_STORAGE_BUCKET` | Defaults to `plan-uploads` |
+| `RESEND_API_KEY` | From resend.com |
+| `RESEND_FROM_EMAIL` | Defaults to `onboarding@resend.dev` (works without domain verification) |
+| `CONTACT_NOTIFICATION_EMAIL` | Defaults to `tapcordengineering@gmail.com` |
 
-## Deployment
+The rest of the site works fully without these — only the `/api/contact` route needs them, and it fails gracefully (clean `500`, no crash) if they're unset.
 
-### Vercel (Recommended)
+## Supabase setup
 
-1. Push your code to a Git repository
-2. Import the project on [Vercel](https://vercel.com)
-3. Vercel will automatically detect Next.js and deploy
+1. Create a project at supabase.com.
+2. In the SQL editor, run:
 
-### Other Platforms
+   ```sql
+   create extension if not exists pgcrypto;
 
-The site can be deployed to any platform that supports Next.js:
-- Netlify
-- AWS Amplify
-- Railway
-- Render
-- Self-hosted with `npm run start`
+   create table public.contact_submissions (
+     id uuid primary key default gen_random_uuid(),
+     created_at timestamptz not null default now(),
+     name text not null,
+     phone text not null,
+     email text not null,
+     project_type text not null check (project_type in ('Hotel','Home','Industrial','Developer')),
+     project_location text,
+     message text,
+     file_path text,
+     file_name text,
+     status text not null default 'new'
+   );
 
-## Contact Information
+   alter table public.contact_submissions enable row level security;
+   -- No anon/authenticated policies: the API route uses the service-role key,
+   -- which bypasses RLS. The table is intentionally unreachable from the browser.
+   ```
 
-- **Lagos**: 08140790116 (WhatsApp available)
-- **Onitsha**: 07025455698 (WhatsApp available)
-- **Service Area**: Lagos & Onitsha, Nigeria
+3. In Storage, create a **private** bucket named `plan-uploads`.
+4. Copy the project URL and the **service role** key (Settings → API) into `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`.
 
-## License
+## Resend setup
 
-Copyright © 2024 Tapcord Engineering. All rights reserved.
+1. Create a free account at resend.com and generate an API key.
+2. Drop it into `RESEND_API_KEY`. Until you verify your own sending domain in Resend, leave `RESEND_FROM_EMAIL` as `onboarding@resend.dev` — it works immediately, no verification needed.
+
+## Deploying to Vercel
+
+1. Push this repo to GitHub.
+2. Import it in Vercel.
+3. Add the environment variables above in the Vercel project settings.
+4. Deploy. No other config needed — Next.js App Router works out of the box on Vercel.
+
+## Brand reference
+
+- Logos: `public/assets/logos/` — full logo for light backgrounds, full-navy variant for dark sections, icon-only variants for favicons/mobile nav.
+- Colors: Orange `#EA7D17` / `#E96F0B`, Navy `#13233D` / `#0F1D33` / `#112240`, Slate `#CBD5E1`, Light `#F8FAFC` / `#F5F6F7`, Warm LED accent `#FFF4E0`. Defined once in `app/globals.css` under `@theme`.
+- Contacts: single source of truth in `lib/site.ts` (`CONTACT` object) — phone, email, address and WhatsApp link are read from there everywhere (header, footer, forms). Never hardcode them elsewhere.
+
+## Content note
+
+The 3D Walkthrough chapter viewer (`components/shared/ChapterViewer.tsx`, used on the homepage and `/services/3d-walkthrough`) currently ships with on-brand placeholder frames instead of real walkthrough stills/video — swap in real renders once they exist.
