@@ -8,6 +8,9 @@ const COMPANY_LINKS = [
   { label: "Projects", href: "/projects" },
   { label: "Insights", href: "/insights" },
   { label: "Contact", href: "/contact" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Refund Policy", href: "/refund-policy" },
 ];
 
 export function Footer() {

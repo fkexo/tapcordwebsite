@@ -50,7 +50,13 @@ export function Header() {
             {CONTACT.phoneDisplay}
           </a>
           <Link
-            href="/#final-cta"
+            href="/dashboard"
+            className="text-sm font-semibold text-navy-deep hover:text-orange-ink"
+          >
+            Client Login
+          </Link>
+          <Link
+            href="/upload"
             className="rounded-full bg-orange px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-orange-deep"
           >
             Get Free Audit

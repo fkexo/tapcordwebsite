@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getSupabaseAdmin, PLAN_UPLOADS_BUCKET } from "@/lib/supabase/server";
+import { getSupabaseAdmin, PLAN_UPLOADS_BUCKET } from "@/lib/supabase/admin";
 import { CONTACT_NOTIFICATION_EMAIL, RESEND_FROM_EMAIL, getResendClient } from "@/lib/resend";
 import { contactFormSchema, isAllowedFile } from "@/lib/validation";
 

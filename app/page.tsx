@@ -7,7 +7,9 @@ import { SmartStatesDemo } from "@/components/home/SmartStatesDemo";
 import { TapcordStandard } from "@/components/home/TapcordStandard";
 import { ProcessSteps } from "@/components/home/ProcessSteps";
 import { FeaturedProject } from "@/components/home/FeaturedProject";
+import { Testimonials } from "@/components/home/Testimonials";
 import { InsightsPreview } from "@/components/home/InsightsPreview";
+import { FAQ } from "@/components/home/FAQ";
 import { FinalCta } from "@/components/home/FinalCta";
 
 export default function HomePage() {
@@ -36,7 +38,13 @@ export default function HomePage() {
         <FeaturedProject />
       </SectionReveal>
       <SectionReveal>
+        <Testimonials />
+      </SectionReveal>
+      <SectionReveal>
         <InsightsPreview />
+      </SectionReveal>
+      <SectionReveal>
+        <FAQ />
       </SectionReveal>
       <FinalCta />
     </>

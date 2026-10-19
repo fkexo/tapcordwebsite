@@ -45,12 +45,19 @@ export function MobileNav() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-3 text-base font-medium text-navy-deep hover:bg-light-bg"
+            >
+              Client Login
+            </Link>
             <div className="mt-2 flex items-center justify-between gap-3 border-t border-navy/10 px-3 pt-4">
               <a href={`tel:${CONTACT.phoneTel}`} className="text-sm font-semibold text-navy-deep">
                 {CONTACT.phoneDisplay}
               </a>
               <Link
-                href="/#final-cta"
+                href="/upload"
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-orange px-4 py-2 text-sm font-semibold text-white"
               >

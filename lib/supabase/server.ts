@@ -1,26 +1,34 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "plan-uploads";
+// Session-aware server client for Server Components / Route Handlers - respects
+// RLS using the signed-in user's own cookies, same as lib/supabase/client.ts does
+// in the browser. For elevated/service-role access, use lib/supabase/admin.ts.
+export async function getSupabaseServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// The Vercel<->Supabase integration names the project URL env var
-// NEXT_PUBLIC_SUPABASE_URL (and sometimes also sets SUPABASE_URL depending on
-// when the integration was connected), so accept either.
-export function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    console.error(
-      `Supabase env vars missing - url: ${url ? "set" : "MISSING"}, service role key: ${key ? "set" : "MISSING"}. ` +
-        "Check SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY in the deployment's environment variables.",
+  if (!url || !anonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set to use Supabase Auth.",
     );
-    return null;
   }
 
-  return createClient(url, key, {
-    auth: { persistSession: false },
+  const cookieStore = await cookies();
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+        } catch {
+          // Called from a Server Component - middleware refreshes the session instead.
+        }
+      },
+    },
   });
 }
-
-export const PLAN_UPLOADS_BUCKET = BUCKET;

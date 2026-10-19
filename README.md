@@ -6,9 +6,15 @@ Next.js (App Router) + TypeScript + Tailwind CSS v4 production site for Tapcord 
 
 - Next.js 16 (App Router), React 19, TypeScript
 - Tailwind CSS v4 (CSS-first `@theme`, no `tailwind.config.ts`)
-- Supabase (Postgres + Storage) for contact form submissions and uploaded floor plans
-- Resend for the email notification sent on each submission
+- Supabase (Postgres + Auth + Storage) — contact form, client project uploads, and the client dashboard
+- Uppy (`@uppy/tus`) for chunked/resumable multi-file uploads straight from the browser to Supabase Storage
+- Resend for notification emails
 - Hosting: Vercel
+
+## Two independent backend paths
+
+1. **Quick contact form** (`app/api/contact/route.ts`, homepage Final CTA + `/contact`) — single optional file attachment, no login, writes to `contact_submissions`. Unchanged, simplest path, works today.
+2. **Client portal** (`/upload`, `/login`, `/dashboard`) — multi-file, multi-category upload that creates a real `projects` record, which a client can later log into `/dashboard` to track. Uses Supabase Auth **Anonymous Sign-ins**: uploading doesn't require creating an account first (same zero-friction idea as the contact form), but it does give the browser a real (anonymous) session so Postgres RLS can scope access correctly. If the client later creates a real account (email/password or magic link) from the *same browser*, Supabase upgrades that session in place and all their uploaded projects carry over automatically. Logging in from a different device starts a separate identity — there's no automatic cross-device linking yet.
 
 ## Getting started
 
@@ -32,8 +38,11 @@ Copy `.env.local.example` to `.env.local` and fill in:
 | `RESEND_API_KEY` | From resend.com |
 | `RESEND_FROM_EMAIL` | Defaults to `onboarding@resend.dev` (works without domain verification) |
 | `CONTACT_NOTIFICATION_EMAIL` | Defaults to `tapcordengineering@gmail.com` |
+| `SUPABASE_CLIENT_PLANS_BUCKET` | Defaults to `client-plans` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Same project URL as `SUPABASE_URL`, exposed to the browser — needed for Auth/`/upload`/`/dashboard` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The **anon/public** key (Settings → API) — safe to expose, RLS is what actually protects data |
 
-The rest of the site works fully without these — only the `/api/contact` route needs them, and it fails gracefully (clean `500`, no crash) if they're unset.
+The marketing site and the contact form work fully without `NEXT_PUBLIC_SUPABASE_*` — only `/login`, `/upload` and `/dashboard` need them, and `middleware.ts` lets requests through rather than breaking the site if they're unset.
 
 ## Supabase setup
 
@@ -63,7 +72,135 @@ The rest of the site works fully without these — only the `/api/contact` route
    ```
 
 3. In Storage, create a **private** bucket named `plan-uploads`.
-4. Copy the project URL and the **service role** key (Settings → API) into `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`.
+4. Copy the project URL and the **service role** key (Settings → API) into `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Also copy the **anon/public** key into `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the project URL again into `NEXT_PUBLIC_SUPABASE_URL`.
+
+## Client portal setup (Supabase Auth + projects/files/updates)
+
+Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site works without this.
+
+1. **Enable Anonymous Sign-ins**: Supabase dashboard → Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**. Without this, `/upload` will fail to start a session.
+2. **Enable Email auth** (usually on by default): Authentication → Providers → Email. Both "Confirm email" (for password sign-up) and magic links work out of the box once this is on.
+3. In the SQL editor, run:
+
+   ```sql
+   create table public.profiles (
+     id uuid primary key references auth.users(id) on delete cascade,
+     role text not null default 'client' check (role in ('client','staff','admin')),
+     full_name text,
+     phone text,
+     email text,
+     created_at timestamptz not null default now()
+   );
+
+   create table public.projects (
+     id uuid primary key default gen_random_uuid(),
+     client_id uuid not null references public.profiles(id),
+     title text not null,
+     project_type text not null check (project_type in (
+       'electrical_3d','mechanical_3d','plumbing_3d','full_mep_3d',
+       'cctv_security','fire_system','smart_home','full_hotel_package'
+     )),
+     location text default 'Lekki, Lagos',
+     status text not null default 'received' check (status in
+       ('received','reviewing','auditing','designing','rendering','delivered')),
+     client_name text not null,
+     client_email text not null,
+     client_phone text not null,
+     notes text,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   );
+
+   create table public.project_files (
+     id uuid primary key default gen_random_uuid(),
+     project_id uuid not null references public.projects(id) on delete cascade,
+     uploaded_by uuid references public.profiles(id),
+     category text not null check (category in (
+       'architectural','structural','electrical','mechanical','plumbing',
+       'fire_protection','cctv_security','smart_home','finishes','other'
+     )),
+     version text not null default 'v1',
+     description text,
+     storage_path text not null,
+     file_name text not null,
+     file_size bigint not null,
+     mime_type text,
+     created_at timestamptz not null default now()
+   );
+
+   create table public.project_updates (
+     id uuid primary key default gen_random_uuid(),
+     project_id uuid not null references public.projects(id) on delete cascade,
+     title text not null,
+     body text,
+     attachment_path text,
+     created_at timestamptz not null default now()
+   );
+
+   alter table public.profiles enable row level security;
+   alter table public.projects enable row level security;
+   alter table public.project_files enable row level security;
+   alter table public.project_updates enable row level security;
+
+   create function public.is_staff() returns boolean as $$
+     select exists (select 1 from public.profiles where id = auth.uid() and role in ('staff','admin'))
+   $$ language sql stable security definer;
+
+   create policy "own profile" on public.profiles for select using (id = auth.uid() or public.is_staff());
+   create policy "update own profile" on public.profiles for update using (id = auth.uid());
+
+   create policy "read own projects" on public.projects for select
+     using (client_id = auth.uid() or public.is_staff());
+   create policy "create own projects" on public.projects for insert
+     with check (client_id = auth.uid());
+   create policy "staff manage projects" on public.projects for update using (public.is_staff());
+
+   create policy "read own project files" on public.project_files for select
+     using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
+   create policy "insert own project files" on public.project_files for insert
+     with check (exists (select 1 from public.projects p where p.id = project_id and p.client_id = auth.uid()) or public.is_staff());
+
+   create policy "read own project updates" on public.project_updates for select
+     using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
+   create policy "staff write updates" on public.project_updates for all using (public.is_staff());
+
+   -- auto-create a profile row when someone signs up (including anonymous sign-in)
+   create function public.handle_new_user() returns trigger as $$
+   begin
+     insert into public.profiles (id, email) values (new.id, new.email);
+     return new;
+   end;
+   $$ language plpgsql security definer;
+   create trigger on_auth_user_created
+     after insert on auth.users
+     for each row execute function public.handle_new_user();
+   ```
+
+4. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
+
+   ```sql
+   create policy "insert own project files" on storage.objects for insert
+     with check (
+       bucket_id = 'client-plans'
+       and exists (
+         select 1 from public.projects p
+         where p.id::text = (storage.foldername(name))[1] and p.client_id = auth.uid()
+       )
+     );
+
+   create policy "read own project files" on storage.objects for select
+     using (
+       bucket_id = 'client-plans'
+       and exists (
+         select 1 from public.projects p
+         where p.id::text = (storage.foldername(name))[1] and (p.client_id = auth.uid() or public.is_staff())
+       )
+     );
+   ```
+
+5. No `/admin` UI yet — staff post rows to `project_updates` and change `projects.status` directly via the Supabase table editor.
+
+**Not yet built, for later:** `/admin` staff UI, the 3D Viewer/Invoices/Messages dashboard tabs (shown as "coming soon"), phone OTP (needs a paid SMS provider connected in Supabase Auth settings), WhatsApp Business API automation (needs a Meta/Twilio/360dialog account — the existing footer `wa.me` link still works today), and payments (the user's pick, Paddle, doesn't support NGN/Nigerian payment rails — re-confirm the gateway before building this).
 
 ## Resend setup
 

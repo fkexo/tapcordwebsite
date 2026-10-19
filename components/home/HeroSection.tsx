@@ -30,10 +30,10 @@ export function HeroSection() {
 
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
-              href="/#final-cta"
+              href="/upload"
               className="rounded-full bg-orange px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange/20 transition-transform hover:-translate-y-0.5 hover:bg-orange-deep"
             >
-              Upload Your Floor Plan
+              Upload Your Plans (Any Format)
             </Link>
             <Link
               href="/services/3d-walkthrough"
