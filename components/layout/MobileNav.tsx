@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { CONTACT, NAV_LINKS } from "@/lib/site";
+import { SignOutButton } from "@/components/dashboard/SignOutButton";
 
-export function MobileNav() {
+export function MobileNav({ user }: { user: User | null }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -50,19 +52,23 @@ export function MobileNav() {
               onClick={() => setOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-medium text-navy-deep hover:bg-light-bg"
             >
-              Client Login
+              {user ? "Dashboard" : "Client Login"}
             </Link>
             <div className="mt-2 flex items-center justify-between gap-3 border-t border-navy/10 px-3 pt-4">
               <a href={`tel:${CONTACT.phoneTel}`} className="text-sm font-semibold text-navy-deep">
                 {CONTACT.phoneDisplay}
               </a>
-              <Link
-                href="/upload"
-                onClick={() => setOpen(false)}
-                className="rounded-full bg-orange px-4 py-2 text-sm font-semibold text-white"
-              >
-                Get Free Audit
-              </Link>
+              {user ? (
+                <SignOutButton />
+              ) : (
+                <Link
+                  href="/upload"
+                  onClick={() => setOpen(false)}
+                  className="rounded-full bg-orange px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Get Free Audit
+                </Link>
+              )}
             </div>
           </nav>
         </div>

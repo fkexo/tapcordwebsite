@@ -8,11 +8,19 @@ type Status = "idle" | "submitting" | "magic-link-sent" | "error";
 
 export function LoginForm({ next }: { next: string }) {
   const [mode, setMode] = useState<Mode>("password");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+
+  // Magic link can't distinguish "new" vs "returning" up front the way password
+  // mode can, so we always collect name/phone there too - harmless for a
+  // returning user (handle_new_user only fires once, on first signup), and
+  // guarantees first-time magic-link users aren't missing this on their profile.
+  const showIdentityFields = mode === "magic-link" || isNewAccount;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -28,10 +36,15 @@ export function LoginForm({ next }: { next: string }) {
       return;
     }
 
+    const identityData = showIdentityFields ? { full_name: fullName, phone } : undefined;
+
     if (mode === "magic-link") {
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          data: identityData,
+        },
       });
       if (signInError) {
         setError(signInError.message);
@@ -46,7 +59,10 @@ export function LoginForm({ next }: { next: string }) {
       ? await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+            data: identityData,
+          },
         })
       : await supabase.auth.signInWithPassword({ email, password });
 
@@ -68,9 +84,11 @@ export function LoginForm({ next }: { next: string }) {
       <div className="rounded-2xl border border-orange/30 bg-orange/5 p-6 text-center">
         <p className="font-heading text-lg font-bold text-navy-deep">Check your email</p>
         <p className="mt-2 text-sm text-navy/70">
-          {isNewAccount
-            ? <>We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.</>
-            : <>We sent a sign-in link to <strong>{email}</strong>. Click it to access your dashboard.</>}
+          {isNewAccount ? (
+            <>We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.</>
+          ) : (
+            <>We sent a sign-in link to <strong>{email}</strong>. Click it to access your dashboard.</>
+          )}
         </p>
       </div>
     );
@@ -98,6 +116,38 @@ export function LoginForm({ next }: { next: string }) {
           Email Link
         </button>
       </div>
+
+      {showIdentityFields && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="fullName" className="mb-1.5 block text-sm font-semibold text-navy-deep">
+              Name
+            </label>
+            <input
+              id="fullName"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
+              placeholder="Your full name"
+            />
+          </div>
+          <div>
+            <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-navy-deep">
+              Phone
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
+              placeholder="080..."
+            />
+          </div>
+        </div>
+      )}
 
       <div>
         <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-navy-deep">

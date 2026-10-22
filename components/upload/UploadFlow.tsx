@@ -26,9 +26,6 @@ export function UploadFlow() {
   const [step, setStep] = useState<Step>("details");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    clientName: "",
-    clientPhone: "",
-    clientEmail: "",
     projectType: "" as (typeof PORTAL_PROJECT_TYPES)[number] | "",
     location: "",
   });
@@ -36,6 +33,23 @@ export function UploadFlow() {
   const [startError, setStartError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      getSupabaseBrowserClient()
+        .auth.getUser()
+        .then(({ data }) => {
+          if (!cancelled) setAccountEmail(data.user?.email ?? null);
+        });
+    } catch {
+      // Supabase not configured - leave accountEmail null, handleStart's 401 path covers this.
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const uppy = useMemo(
     () =>
@@ -224,40 +238,16 @@ export function UploadFlow() {
 
   return (
     <form onSubmit={handleStart} className="space-y-5">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-navy-deep">Name *</label>
-          <input
-            required
-            value={form.clientName}
-            onChange={(e) => updateField("clientName", e.target.value)}
-            className="w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
-          />
-          {fieldErrors.clientName && <p className="mt-1 text-xs text-red-500">{fieldErrors.clientName}</p>}
+      {accountEmail && (
+        <div className="flex items-center justify-between rounded-xl bg-light-bg-alt px-4 py-2.5 text-xs text-navy/60">
+          <span>
+            Uploading as <strong className="text-navy-deep">{accountEmail}</strong>
+          </span>
+          <a href="/login" className="font-semibold text-orange-ink hover:underline">
+            Not you?
+          </a>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-navy-deep">Phone *</label>
-          <input
-            required
-            value={form.clientPhone}
-            onChange={(e) => updateField("clientPhone", e.target.value)}
-            className="w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
-          />
-          {fieldErrors.clientPhone && <p className="mt-1 text-xs text-red-500">{fieldErrors.clientPhone}</p>}
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-sm font-semibold text-navy-deep">Email *</label>
-        <input
-          type="email"
-          required
-          value={form.clientEmail}
-          onChange={(e) => updateField("clientEmail", e.target.value)}
-          className="w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
-        />
-        {fieldErrors.clientEmail && <p className="mt-1 text-xs text-red-500">{fieldErrors.clientEmail}</p>}
-      </div>
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>

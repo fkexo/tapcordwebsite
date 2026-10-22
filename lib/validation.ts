@@ -70,10 +70,10 @@ export const ALLOWED_PROJECT_FILE_EXTENSIONS = [
   ".jpeg",
 ] as const;
 
+// Name/phone/email are NOT collected here - the user already provided them at
+// signup (components/auth/LoginForm.tsx) and /upload is only reachable while
+// logged in (proxy.ts). The API route derives identity from the session/profile.
 export const createProjectSchema = z.object({
-  clientName: z.string().trim().min(1, "Name is required").max(200),
-  clientPhone: z.string().trim().min(5, "Phone number is required").max(40),
-  clientEmail: z.string().trim().email("Enter a valid email address").max(200),
   projectType: z.enum(PORTAL_PROJECT_TYPES, { message: "Select a project type" }),
   location: z.string().trim().max(200).optional().or(z.literal("")),
   title: z.string().trim().max(200).optional().or(z.literal("")),

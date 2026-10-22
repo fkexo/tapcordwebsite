@@ -163,10 +163,18 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
    create policy "staff write updates" on public.project_updates for all using (public.is_staff());
 
-   -- auto-create a profile row when someone signs up
+   -- auto-create a profile row when someone signs up, pulling name/phone from
+   -- the signup form's metadata (passed via supabase.auth.signUp/signInWithOtp's
+   -- options.data - see components/auth/LoginForm.tsx)
    create function public.handle_new_user() returns trigger as $$
    begin
-     insert into public.profiles (id, email) values (new.id, new.email);
+     insert into public.profiles (id, email, full_name, phone)
+     values (
+       new.id,
+       new.email,
+       new.raw_user_meta_data ->> 'full_name',
+       new.raw_user_meta_data ->> 'phone'
+     );
      return new;
    end;
    $$ language plpgsql security definer;
@@ -174,6 +182,8 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      after insert on auth.users
      for each row execute function public.handle_new_user();
    ```
+
+   **Already ran the schema before `full_name`/`phone` were added?** Just re-run the `create function public.handle_new_user()` block above with `create or replace function` instead of `create function` - it replaces the trigger's logic in place, no need to touch the table or drop anything. New signups will then populate `full_name`/`phone`; accounts created before this change will have `null` there until they update their profile.
 
 3. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
 

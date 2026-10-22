@@ -4,10 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { CONTACT, NAV_LINKS } from "@/lib/site";
 import { useStickyHeader } from "@/lib/hooks/useStickyHeader";
+import { useAuthUser } from "@/lib/hooks/useAuthUser";
+import { SignOutButton } from "@/components/dashboard/SignOutButton";
 import { MobileNav } from "./MobileNav";
 
 export function Header() {
   const scrolled = useStickyHeader();
+  const { user } = useAuthUser();
 
   return (
     <header
@@ -49,21 +52,35 @@ export function Header() {
           >
             {CONTACT.phoneDisplay}
           </a>
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-navy-deep hover:text-orange-ink"
-          >
-            Client Login
-          </Link>
-          <Link
-            href="/upload"
-            className="rounded-full bg-orange px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-orange-deep"
-          >
-            Get Free Audit
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm font-semibold text-navy-deep hover:text-orange-ink"
+              >
+                Dashboard
+              </Link>
+              <SignOutButton />
+            </>
+          ) : (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm font-semibold text-navy-deep hover:text-orange-ink"
+              >
+                Client Login
+              </Link>
+              <Link
+                href="/upload"
+                className="rounded-full bg-orange px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-orange-deep"
+              >
+                Get Free Audit
+              </Link>
+            </>
+          )}
         </div>
 
-        <MobileNav />
+        <MobileNav user={user} />
       </div>
     </header>
   );
