@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { createProjectSchema, PORTAL_PROJECT_TYPE_LABELS } from "@/lib/validation";
 
-// Uses the session-aware client (not service-role): the browser must already
-// hold a Supabase Auth session (anonymous or real - see lib/supabase/ensureSession.ts)
-// before calling this, so RLS can scope the insert to that session's auth.uid().
+// Uses the session-aware client (not service-role): the caller must already be
+// logged in (proxy.ts gates /upload) so RLS can scope the insert to their auth.uid().
 export async function POST(request: Request) {
   let body: unknown;
   try {

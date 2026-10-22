@@ -6,7 +6,6 @@ import { Dashboard } from "@uppy/react";
 import Tus from "@uppy/tus";
 import "@uppy/core/dist/style.min.css";
 import "@uppy/dashboard/dist/style.min.css";
-import { ensureSession } from "@/lib/supabase/ensureSession";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   FILE_CATEGORIES,
@@ -138,12 +137,17 @@ export function UploadFlow() {
 
     setStarting(true);
     try {
-      await ensureSession();
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
+
+      if (response.status === 401) {
+        window.location.href = "/login?next=/upload";
+        return;
+      }
+
       const result = await response.json();
       if (!response.ok || !result.ok) {
         setStartError("Could not start your project. Please try again or call/WhatsApp us instead.");
@@ -154,11 +158,7 @@ export function UploadFlow() {
       setStep("uploading");
     } catch (error) {
       console.error("Upload start failed:", error);
-      setStartError(
-        error instanceof Error && error.message.includes("Anonymous Sign-ins")
-          ? "Uploads aren't set up yet. Please call or WhatsApp us instead."
-          : "Network error. Please try again or call/WhatsApp us instead.",
-      );
+      setStartError("Network error. Please try again or call/WhatsApp us instead.");
     } finally {
       setStarting(false);
     }

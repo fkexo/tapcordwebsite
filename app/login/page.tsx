@@ -15,6 +15,7 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const next = params.next ?? "/dashboard";
+  const isUploadFlow = next.startsWith("/upload");
 
   return (
     <section className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-16 sm:px-6">
@@ -23,9 +24,13 @@ export default async function LoginPage({
           Client Portal
         </p>
         <h1 className="mt-3 font-heading text-2xl font-bold text-navy-deep sm:text-3xl">
-          Track your project
+          {isUploadFlow ? "Sign in to upload your plans" : "Track your project"}
         </h1>
-        <p className="mt-2 text-sm text-navy/60">Sign in to see your files, audit updates and status.</p>
+        <p className="mt-2 text-sm text-navy/60">
+          {isUploadFlow
+            ? "Sign in or create a free account to upload your plans and track the audit afterwards."
+            : "Sign in to see your files, audit updates and status."}
+        </p>
       </div>
 
       {params.error && (

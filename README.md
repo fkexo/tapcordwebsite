@@ -14,7 +14,7 @@ Next.js (App Router) + TypeScript + Tailwind CSS v4 production site for Tapcord 
 ## Two independent backend paths
 
 1. **Quick contact form** (`app/api/contact/route.ts`, homepage Final CTA + `/contact`) — single optional file attachment, no login, writes to `contact_submissions`. Unchanged, simplest path, works today.
-2. **Client portal** (`/upload`, `/login`, `/dashboard`) — multi-file, multi-category upload that creates a real `projects` record, which a client can later log into `/dashboard` to track. Uses Supabase Auth **Anonymous Sign-ins**: uploading doesn't require creating an account first (same zero-friction idea as the contact form), but it does give the browser a real (anonymous) session so Postgres RLS can scope access correctly. If the client later creates a real account (email/password or magic link) from the *same browser*, Supabase upgrades that session in place and all their uploaded projects carry over automatically. Logging in from a different device starts a separate identity — there's no automatic cross-device linking yet.
+2. **Client portal** (`/upload`, `/login`, `/dashboard`) — multi-file, multi-category upload that creates a real `projects` record, which the same client logs into `/dashboard` to track. `/upload` and `/dashboard` both require a real Supabase Auth account (email/password or magic link) - `proxy.ts` redirects signed-out visitors to `/login?next=/upload` (or `/dashboard`) first. RLS scopes every row/file to `client_id = auth.uid()`, so once logged in a client only ever sees their own projects.
 
 ## Getting started
 
@@ -78,9 +78,8 @@ The marketing site and the contact form work fully without `NEXT_PUBLIC_SUPABASE
 
 Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site works without this.
 
-1. **Enable Anonymous Sign-ins**: Supabase dashboard → Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**. Without this, `/upload` will fail to start a session.
-2. **Enable Email auth** (usually on by default): Authentication → Providers → Email. Both "Confirm email" (for password sign-up) and magic links work out of the box once this is on.
-3. In the SQL editor, run:
+1. **Enable Email auth** (usually on by default): Supabase dashboard → Authentication → Providers → Email. Both "Confirm email" (for password sign-up) and magic links work out of the box once this is on. `/upload` and `/dashboard` both require a real account - there's no anonymous/guest upload.
+2. In the SQL editor, run:
 
    ```sql
    create table public.profiles (
@@ -164,7 +163,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
    create policy "staff write updates" on public.project_updates for all using (public.is_staff());
 
-   -- auto-create a profile row when someone signs up (including anonymous sign-in)
+   -- auto-create a profile row when someone signs up
    create function public.handle_new_user() returns trigger as $$
    begin
      insert into public.profiles (id, email) values (new.id, new.email);
@@ -176,7 +175,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      for each row execute function public.handle_new_user();
    ```
 
-4. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
+3. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
 
    ```sql
    create policy "insert own project files" on storage.objects for insert
@@ -198,7 +197,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      );
    ```
 
-5. No `/admin` UI yet — staff post rows to `project_updates` and change `projects.status` directly via the Supabase table editor.
+4. No `/admin` UI yet — staff post rows to `project_updates` and change `projects.status` directly via the Supabase table editor.
 
 **Not yet built, for later:** `/admin` staff UI, the 3D Viewer/Invoices/Messages dashboard tabs (shown as "coming soon"), phone OTP (needs a paid SMS provider connected in Supabase Auth settings), WhatsApp Business API automation (needs a Meta/Twilio/360dialog account — the existing footer `wa.me` link still works today), and payments (the user's pick, Paddle, doesn't support NGN/Nigerian payment rails — re-confirm the gateway before building this).
 

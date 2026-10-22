@@ -5,10 +5,11 @@ const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "plan-uploads";
 const CLIENT_PLANS_BUCKET = process.env.SUPABASE_CLIENT_PLANS_BUCKET ?? "client-plans";
 
 // Service-role client - bypasses RLS entirely. Only use inside server-only code
-// (Route Handlers) that genuinely needs elevated privileges: the contact form,
-// project/file creation during anonymous upload, and webhook handlers. Never
-// import this where a user-scoped session client (lib/supabase/server.ts or
-// lib/supabase/client.ts) would do, since those correctly enforce RLS.
+// (Route Handlers) that genuinely needs elevated privileges: the contact form
+// (no login) and future webhook handlers. Never import this where a user-scoped
+// session client (lib/supabase/server.ts or lib/supabase/client.ts) would do -
+// the project upload flow is logged-in only and uses the session-aware client
+// so RLS correctly scopes everything to the signed-in user.
 //
 // The Vercel<->Supabase integration names the project URL env var
 // NEXT_PUBLIC_SUPABASE_URL (and sometimes also sets SUPABASE_URL depending on

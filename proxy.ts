@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // Auth isn't configured yet - let requests through rather than breaking the
-  // whole site. /dashboard will simply have no session to read in that case.
+  // whole site. /dashboard and /upload will simply have no session to read in that case.
   if (!url || !anonKey) {
     return response;
   }
@@ -30,9 +30,10 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const requiresAuth =
+    request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/upload");
 
-  if (isDashboardRoute && !user) {
+  if (requiresAuth && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -42,5 +43,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/upload/:path*"],
 };
