@@ -79,10 +79,10 @@ The marketing site and the contact form work fully without `NEXT_PUBLIC_SUPABASE
 Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site works without this.
 
 1. **Enable Email auth** (usually on by default): Supabase dashboard → Authentication → Providers → Email. Both "Confirm email" (for password sign-up) and magic links work out of the box once this is on. `/upload` and `/dashboard` both require a real account - there's no anonymous/guest upload.
-2. In the SQL editor, run:
+2. In the SQL editor, run this. Every statement is idempotent (`if not exists`, `or replace`, `drop ... if exists` before each policy) - safe to run once or to re-run anytime, including after a partial/failed run (Supabase's SQL editor runs a multi-statement paste as one transaction, so any single error rolls back everything before it too):
 
    ```sql
-   create table public.profiles (
+   create table if not exists public.profiles (
      id uuid primary key references auth.users(id) on delete cascade,
      role text not null default 'client' check (role in ('client','staff','admin')),
      full_name text,
@@ -91,7 +91,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      created_at timestamptz not null default now()
    );
 
-   create table public.projects (
+   create table if not exists public.projects (
      id uuid primary key default gen_random_uuid(),
      client_id uuid not null references public.profiles(id),
      title text not null,
@@ -110,7 +110,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      updated_at timestamptz not null default now()
    );
 
-   create table public.project_files (
+   create table if not exists public.project_files (
      id uuid primary key default gen_random_uuid(),
      project_id uuid not null references public.projects(id) on delete cascade,
      uploaded_by uuid references public.profiles(id),
@@ -127,7 +127,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
      created_at timestamptz not null default now()
    );
 
-   create table public.project_updates (
+   create table if not exists public.project_updates (
      id uuid primary key default gen_random_uuid(),
      project_id uuid not null references public.projects(id) on delete cascade,
      title text not null,
@@ -141,33 +141,49 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
    alter table public.project_files enable row level security;
    alter table public.project_updates enable row level security;
 
-   create function public.is_staff() returns boolean as $$
+   create or replace function public.is_staff() returns boolean as $$
      select exists (select 1 from public.profiles where id = auth.uid() and role in ('staff','admin'))
    $$ language sql stable security definer;
 
+   drop policy if exists "own profile" on public.profiles;
    create policy "own profile" on public.profiles for select using (id = auth.uid() or public.is_staff());
+
+   drop policy if exists "update own profile" on public.profiles;
    create policy "update own profile" on public.profiles for update using (id = auth.uid());
+
+   drop policy if exists "create own profile" on public.profiles;
    create policy "create own profile" on public.profiles for insert with check (id = auth.uid());
 
+   drop policy if exists "read own projects" on public.projects;
    create policy "read own projects" on public.projects for select
      using (client_id = auth.uid() or public.is_staff());
+
+   drop policy if exists "create own projects" on public.projects;
    create policy "create own projects" on public.projects for insert
      with check (client_id = auth.uid());
+
+   drop policy if exists "staff manage projects" on public.projects;
    create policy "staff manage projects" on public.projects for update using (public.is_staff());
 
+   drop policy if exists "read own project files" on public.project_files;
    create policy "read own project files" on public.project_files for select
      using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
+
+   drop policy if exists "insert own project files" on public.project_files;
    create policy "insert own project files" on public.project_files for insert
      with check (exists (select 1 from public.projects p where p.id = project_id and p.client_id = auth.uid()) or public.is_staff());
 
+   drop policy if exists "read own project updates" on public.project_updates;
    create policy "read own project updates" on public.project_updates for select
      using (exists (select 1 from public.projects p where p.id = project_id and (p.client_id = auth.uid() or public.is_staff())));
+
+   drop policy if exists "staff write updates" on public.project_updates;
    create policy "staff write updates" on public.project_updates for all using (public.is_staff());
 
    -- auto-create a profile row when someone signs up, pulling name/phone from
    -- the signup form's metadata (passed via supabase.auth.signUp/signInWithOtp's
    -- options.data - see components/auth/LoginForm.tsx)
-   create function public.handle_new_user() returns trigger as $$
+   create or replace function public.handle_new_user() returns trigger as $$
    begin
      insert into public.profiles (id, email, full_name, phone)
      values (
@@ -175,24 +191,17 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
        new.email,
        new.raw_user_meta_data ->> 'full_name',
        new.raw_user_meta_data ->> 'phone'
-     );
+     )
+     on conflict (id) do nothing;
      return new;
    end;
    $$ language plpgsql security definer;
+
+   drop trigger if exists on_auth_user_created on auth.users;
    create trigger on_auth_user_created
      after insert on auth.users
      for each row execute function public.handle_new_user();
    ```
-
-   **Already ran the schema before `full_name`/`phone` were added?** Just re-run the `create function public.handle_new_user()` block above with `create or replace function` instead of `create function` - it replaces the trigger's logic in place, no need to touch the table or drop anything. New signups will then populate `full_name`/`phone`; accounts created before this change will have `null` there until they update their profile.
-
-   **Already ran the schema and seeing "Could not start your project"?** The `profiles` table was originally missing an `insert` policy, so any account created *before* the `on_auth_user_created` trigger existed has no `profiles` row - and `projects.client_id` has a foreign key to `profiles(id)`, so project creation fails. Run just this one line to add the missing policy (included above for fresh setups):
-
-   ```sql
-   create policy "create own profile" on public.profiles for insert with check (id = auth.uid());
-   ```
-
-   The app now also self-heals this automatically (`/api/projects` creates a minimal profile row if one is missing) once this policy is in place, so it only needs fixing once.
 
 3. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
 
