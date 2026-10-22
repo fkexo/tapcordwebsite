@@ -147,6 +147,7 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
 
    create policy "own profile" on public.profiles for select using (id = auth.uid() or public.is_staff());
    create policy "update own profile" on public.profiles for update using (id = auth.uid());
+   create policy "create own profile" on public.profiles for insert with check (id = auth.uid());
 
    create policy "read own projects" on public.projects for select
      using (client_id = auth.uid() or public.is_staff());
@@ -184,6 +185,14 @@ Only needed for `/upload`, `/login` and `/dashboard` — the rest of the site wo
    ```
 
    **Already ran the schema before `full_name`/`phone` were added?** Just re-run the `create function public.handle_new_user()` block above with `create or replace function` instead of `create function` - it replaces the trigger's logic in place, no need to touch the table or drop anything. New signups will then populate `full_name`/`phone`; accounts created before this change will have `null` there until they update their profile.
+
+   **Already ran the schema and seeing "Could not start your project"?** The `profiles` table was originally missing an `insert` policy, so any account created *before* the `on_auth_user_created` trigger existed has no `profiles` row - and `projects.client_id` has a foreign key to `profiles(id)`, so project creation fails. Run just this one line to add the missing policy (included above for fresh setups):
+
+   ```sql
+   create policy "create own profile" on public.profiles for insert with check (id = auth.uid());
+   ```
+
+   The app now also self-heals this automatically (`/api/projects` creates a minimal profile row if one is missing) once this policy is in place, so it only needs fixing once.
 
 3. In Storage, create a **private** bucket named `client-plans`, then add storage policies (Storage → `client-plans` → Policies) mirroring the table policies:
 

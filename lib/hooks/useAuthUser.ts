@@ -15,7 +15,9 @@ export function useAuthUser() {
     try {
       supabase = getSupabaseBrowserClient();
     } catch {
-      setLoading(false);
+      // Defer past the current commit so this doesn't setState synchronously
+      // inside the effect body (react-hooks/set-state-in-effect).
+      queueMicrotask(() => setLoading(false));
       return;
     }
 

@@ -39,7 +39,20 @@ export async function POST(request: Request) {
     .from("profiles")
     .select("full_name, phone")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  // Self-heal: accounts created before the on_auth_user_created trigger existed
+  // (or before "profiles" had an insert policy) have no profiles row at all.
+  // projects.client_id has a foreign key to profiles(id), so without this the
+  // insert below fails. Create a minimal row now - safe and idempotent.
+  if (!profile) {
+    const { error: profileInsertError } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, email: user.email ?? null });
+    if (profileInsertError) {
+      console.error("Could not self-heal missing profile row:", profileInsertError.message);
+    }
+  }
 
   // Fall back to signup metadata, then a safe default - covers accounts created
   // before full_name/phone were captured, so the insert never hits a not-null
